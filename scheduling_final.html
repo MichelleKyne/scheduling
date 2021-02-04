@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>CHI 2020 Program</title>
+        <style>
+            h1 {
+                font-size: 40px;
+            }
+            h2 {
+                font-size: 30px;
+            }
+            h1, h2, th {
+                font-family: monospace;
+                text-align: center;   
+            }
+            table {
+                width: 100%;
+            }           
+            table, th, td {
+                border: solid;
+                border-color: white;
+                border-collapse: collapse;
+                padding: 5px;
+            }
+            td {
+                font-family: sans-serif;
+                text-align: center;
+            }
+            th {
+                background-color: black;
+                color: white;
+                font-size: 20px;
+            }
+            tr {
+                background-color: #f1f1f1;
+            }
+            a {
+                text-decoration: none;
+                color: gray;
+            }
+            p {
+                font-family: sans-serif;
+            }
+            #day, #time {
+                background-color: lightgray;               
+                font-family: monospace;
+                font-size: 15px;
+                margin: 5px;
+            }
+            #showSchedule {
+                background-color: green;
+                margin: 5px;
+                border: none;
+                color: white;
+                padding: 10px;
+                display: inline-block;
+                font-size: 15px;
+                cursor: pointer;
+            } 
+            #subButton {
+                background-color: gray;
+                margin: 5px;
+                border: none;
+                color: white;
+                padding: 5px; 
+                cursor: pointer;
+            }
+            .subs {
+                padding: 5px;
+            }
+        </style>
+    </head>
+
+    <body>
+        <h1>The ACM CHI Conference on Human Factors in Computing Systems 2020</h1> 
+        <h2>Conference Schedule</h2> 
+        <div id="menu">
+            <p id="radio">
+                <input type="radio" name="choice" value="choice1"> Show only paper sessions<br>
+                <input type="radio" name="choice" value="choice2"> Show everything except paper sessions<br>
+                <input type="radio" name="choice" value="choice3" checked> Show all sessions<br>
+            </p> 
+            <input type="button" id="showSchedule" value="Submit">
+        </div>
+        <div id="filter">
+            <p id="presentedDay"></p>
+        </div>
+        <div id="container"></div>
+           
+    <script>
+        // Create a dropdown list for the days with the select tag
+        const dropDownList = document.createElement("select");
+        dropDownList.id = "day";
+        dropDownList.style.display = "block";
+        let rd = document.getElementById("radio");
+        document.getElementById("menu").insertBefore(dropDownList,rd);
+        // Create a dropdown list for the times with the select tag
+        const dropDownListTimes = document.createElement("select"); 
+        dropDownListTimes.id = "time";
+        dropDownListTimes.style.display = "block";
+        const allTimes = document.createElement("option");
+        allTimes.setAttribute("value",0);
+        allTimes.setAttribute("text","All times");
+        dropDownListTimes.appendChild(allTimes).innerHTML = "All times";
+        let pd = document.getElementById("presentedDay");
+        document.getElementById("filter").insertBefore(dropDownListTimes,pd);      
+        
+        // Request json file
+        var xmlhttp = new XMLHttpRequest();
+        var url = "scheduling.json";
+
+        xmlhttp.onreadystatechange = function() {
+        if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+            //Parse the JSON data to a JavaScript variable. 
+            var parsedJSON = JSON.parse(xmlhttp.responseText);  
+            // This function is defined below and deals with the JSON data read from the file. 
+            myFunction(parsedJSON); 
+            }
+        };
+        xmlhttp.open("GET", url, true);
+        xmlhttp.send();
+                        
+        function myFunction(obj) {   
+            // Extract the data object from the root object
+            var schedule = obj;
+            // Dynamically create day/date options based on the length of the object
+            schedlen = schedule.length;
+            for (var i=0; i<schedlen; i++) {
+                var dayOp = document.createElement("option");
+                dayOp.setAttribute("value",i);
+                dropDownList.appendChild(dayOp); 
+                document.getElementById("day").children[i].innerHTML = schedule[i].day + ":" + schedule[i].date;
+            }
+            // Create time options based on day 0 (default values on inital page load)
+            slots = schedule[0].slots;
+            for (s in slots) {
+                var slot = slots[s]; 
+                if (slot.sessions.length == 0) {
+                    continue;
+                }
+                else {
+                    createOption(document.getElementById("time"), slot.time, s);
+                }
+            }     
+            document.getElementById("day").onchange = function() {configureDropDownLists(this,document.getElementById("time"))};
+            // Create time options based on the day/date selected
+            function configureDropDownLists(ddl1, ddl2) {
+                ddl2.innerHTML = "";
+                createOption(ddl2, "All times", 0);
+                var dayLen = ddl1.options.length;
+                for (var k=0; k<dayLen; k++) {
+                    opt = ddl1.options[k];
+                    if (opt.selected === true) {
+                        slots = schedule[k].slots;
+                        var v = 1;
+                        for (s in slots) {
+                            var slot = slots[s]; 
+                            if (slot.sessions.length != 0) {
+                                createOption(ddl2, slot.time, v);
+                                v++; 
+                            }
+                        }
+                    }
+                }
+            }         
+            function createOption(ddl, text, value) {
+                var opt = document.createElement("option");
+                opt.text = text;
+                opt.value = value;
+                ddl.options.add(opt);
+            }            
+            // Getting selected day from dropdown list. (Code adapted from https://www.dyn-web.com/tutorials/forms/select/selected.php)
+            function getSelectedDay() {
+                var daySel = document.getElementById("day");
+                var daySelLen = daySel.options.length;
+                for (var i=0; i<daySelLen; i++) {
+                    opt = daySel.options[i];
+                    if (opt.selected === true) {
+                        break;
+                    }
+                }
+                return opt.value;
+            }
+            // Toggle visibility of submission links
+            function viewSubmissions(row) {
+                var nextRow = row.nextSibling;
+                if (nextRow.style.display == "none") {
+                    nextRow.style.display = "table-row";
+                }
+                else {
+                    nextRow.style.display = "none";
+                }
+            }
+            // Assign onclick handler to the Submit button.
+            document.getElementById("showSchedule").onclick = function () {
+                document.getElementById("time").selectedIndex = "0";
+                dayIndex = getSelectedDay();
+                document.getElementById("presentedDay").innerHTML = "Program information for " + schedule[dayIndex].day + "(" + schedule[dayIndex].date + ")";                     
+                var container = document.getElementById("container");
+                var removeTable = document.getElementById("myTable");
+                if (removeTable != null) {
+                    container.removeChild(removeTable);
+                }
+                // Construct the table    
+                var table = document.createElement("table");
+                table.id = "myTable";
+                document.getElementById("container").appendChild(table);
+                tl = table.length;
+                var row = table.insertRow(tl);
+                var [cell1,cell2,cell3,cell4,cell5] = [row.insertCell(0),row.insertCell(1),row.insertCell(2),row.insertCell(3)];
+                [cell1.outerHTML,cell2.outerHTML,cell3.outerHTML,cell4.outerHTML] = ["<th>Start time</th>","<th>Title</th>","<th>Location</th>","<th>Session type</th>"]; 
+                slots = schedule[dayIndex].slots;
+                for (s in slots) {
+                    var slot = slots[s]; 
+                    slotlen = slot.sessions.length;
+                    for (var i=0; i<slotlen; i++) {
+                        tl = table.length;
+                        var row = table.insertRow(tl);
+                        var stime = slot.startTime.substr(11,8);
+                        var stitle = slot.sessions[i].title;
+                        var slocation = slot.sessions[i].room;
+                        var stype = slot.sessions[i].type;
+                        if (stype == "paper") {
+                            row.className = "paper";
+                        }
+                        else {
+                            row.className = "not_paper";
+                        }
+                        var [cell1,cell2,cell3,cell4] = [row.insertCell(0),row.insertCell(1),row.insertCell(2),row.insertCell(3)];
+                        [cell1.innerHTML,cell2.innerHTML,cell3.innerHTML,cell4.innerHTML] = [stime,stitle,slocation,stype];
+                        var subs = slot.sessions[i].submissions;
+                        sublen = subs.length;
+                        if (sublen != 0) {
+                            var tl = table.length;
+                            var subrow = table.insertRow(tl);
+                            subrow.style.display = "none";
+                            var [subcell1,subcell2,subcell3,subcell4] = [subrow.insertCell(0),subrow.insertCell(1),subrow.insertCell(2),subrow.insertCell(3)];
+                            for (var j=0; j<sublen; j++) {  
+                                var subtitle = subs[j].title;
+                                var link = subs[j].doiUrl;
+                                var elLink = document.createElement("a");
+                                elLink.href = link;
+                                elLink.target = "_blank";
+                                elLink.innerText = subtitle;
+                                var div = document.createElement("div");
+                                div.setAttribute("class","subs")
+                                div.appendChild(elLink);
+                                subcell2.appendChild(div);
+                            }
+                            var button = document.createElement("input");
+                            linebreak = document.createElement("br");
+                            cell2.appendChild(linebreak);
+                            cell2.appendChild(button);
+                            button.setAttribute("type","button");
+                            button.setAttribute("id","subButton");
+                            button.setAttribute("value","View submissions");
+                            button.onclick = function() {viewSubmissions(this.parentElement.parentElement) };
+                        }
+                    } 
+                }                          
+                // Radio button code adapted from https://www.javascripttutorial.net/javascript-dom/javascript-radio-button/
+                const rbs = document.querySelectorAll('input[name="choice"]');
+                let selectedValue;
+                for (const rb of rbs) {
+                    if (rb.checked) {
+                        selectedValue = rb.value;
+                        break;
+                    }
+                }              
+                if (selectedValue == "choice1") {
+                    paperRows = document.getElementsByClassName("paper");
+                    len = paperRows.length;
+                    for (i=0; i<len; i++) {
+                        paperRows[i].style.display = "table-row";
+                    }
+                    notPaperRows = document.getElementsByClassName("not_paper");
+                    len = notPaperRows.length;
+                    for (i=0; i<len; i++) {
+                        notPaperRows[i].style.display = "none";
+                    }
+                } 
+                else if (selectedValue == "choice2") {
+                    paperRows = document.getElementsByClassName("paper");
+                    len = paperRows.length;
+                    for (i=0; i<len; i++) {
+                        paperRows[i].style.display = "none";
+                    }
+                    notPaperRows = document.getElementsByClassName("not_paper");
+                    len = notPaperRows.length;
+                    for (i=0; i<len; i++) {
+                        notPaperRows[i].style.display = "table-row";
+                    }
+                }
+                else if (selectedValue == "choice3") {
+                    paperRows = document.getElementsByClassName("paper");
+                    len = paperRows.length;
+                    for (i=0; i<len; i++) {
+                        paperRows[i].style.display = "table-row";
+                    }
+                    notPaperRows = document.getElementsByClassName("not_paper");
+                    len = notPaperRows.length;
+                    for (i=0; i<len; i++) {
+                        notPaperRows[i].style.display = "table-row";
+                    }
+                }
+            }
+            document.getElementById("time").onchange = function() {filterRows(this,document.getElementsByTagName("tr"))};
+            // Link the time slot selected to the rows for that time slot. Change the display style of rows.
+            function filterRows(ddl, rows) {
+                var allRowsLen = rows.length;
+                var rowsArray = [];
+                for (var i=1; i<allRowsLen; i++) {
+                    rowsArray.push(rows[i])
+                }
+                const rbs = document.querySelectorAll('input[name="choice"]');
+                let selectedValue;
+                for (const rb of rbs) {
+                    if (rb.checked) {
+                        selectedValue = rb.value;
+                        break;
+                    }
+                } 
+                var timeSel = document.getElementById("time");
+                var timeOpLen = timeSel.options.length;
+                for (var i=0; i<timeOpLen; i++) {
+                    timeOp = timeSel.options[i];
+                    if (timeOp.selected === true) {
+                        timeOpSlot = timeOp.text; 
+                        if (selectedValue == "choice1") {
+                            visRows = document.getElementsByClassName("paper");
+                        }
+                        else if (selectedValue == "choice2") {
+                            visRows = document.getElementsByClassName("not_paper");
+                        }
+                        else if (selectedValue == "choice3") {
+                            visRows = rowsArray;
+                        }
+                        if (timeOpSlot == "All times") {
+                            for (var i=1; i<visRowsLen; i++) {
+                                visRows[i].style.display = "table-row";
+                            }
+                        }
+                        else {
+                            visRowsLen = visRows.length;
+                            for (var j=0; j<visRowsLen; j++) {
+                                if (visRows[j].cells[0].innerHTML.substr(0,4) == timeOpSlot.substr(0,4)) {
+                                    visRows[j].style.display = "table-row";
+                                }
+                                else {
+                                    visRows[j].style.display = "none";
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }        
+    </script>
+    </body>
+</html>
